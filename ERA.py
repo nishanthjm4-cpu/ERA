@@ -65,7 +65,6 @@ st.markdown("""
 # =================================================
 @st.cache_data
 def load_data():
-    df = pd.read_csv("social_media_engagement_enhanced(1).csv")
     df = pd.read_csv("social_media_engagement_enhanced (1).csv")
     df["date"] = pd.to_datetime(df["date"])
     return df
@@ -178,7 +177,7 @@ top_content = (
 st.success(f"🔥 Best Performing Content Type: **{top_content}**")
 
 # =================================================
-# TABS (ONE EXTRA TAB ADDED)
+# TABS
 # =================================================
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
     ["📱 Engagement", "🖼️ Content", "💰 Campaign ROI", "⏰ Best Time", "📈 Trends"]
@@ -188,11 +187,6 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(
 with tab1:
     platform_eng = filtered_df.groupby("platform")["engagement_rate"].mean().reset_index()
     st.bar_chart(platform_eng, x="platform", y="engagement_rate")
-
-    best_platform = platform_eng.loc[
-        platform_eng["engagement_rate"].idxmax(), "platform"
-    ]
-    st.info(f"📈 Highest engagement is observed on **{best_platform}**")
 
 # ---------------- TAB 2 ----------------
 with tab2:
@@ -205,44 +199,21 @@ with tab3:
     campaign_df = filtered_df[filtered_df["campaign_name"].notna()]
     campaign_summary = campaign_df.groupby("campaign_name")[["ad_spend","revenue_generated","roi"]].mean().reset_index()
     st.dataframe(campaign_summary)
-    st.bar_chart(campaign_summary, x="campaign_name", y="revenue_generated")
-    st.bar_chart(campaign_summary, x="campaign_name", y="roi")
 
 # ---------------- TAB 4 ----------------
 with tab4:
     hourly = filtered_df.groupby("post_hour")["engagement"].mean().reset_index()
     st.line_chart(hourly, x="post_hour", y="engagement")
 
-    best_hour = hourly.loc[hourly["engagement"].idxmax(), "post_hour"]
-    st.success(f"🔥 Best Posting Time: **{best_hour}:00 hrs**")
-
-    st.warning(
-        f"""
-        📌 **System Recommendation**
-        - Post **{top_content}** content
-        - Around **{best_hour}:00 hrs**
-        - Focus on **{best_platform}**
-        """
-    )
-
-# ---------------- TAB 5 : TRENDS ----------------
+# ---------------- TAB 5 ----------------
 with tab5:
-    st.markdown("### 📈 Engagement Trend Over Time")
-
     trend_df = (
         filtered_df.groupby(["year", "month"])["engagement"]
         .mean()
         .reset_index()
         .sort_values(["year", "month"])
     )
-
     st.line_chart(trend_df, x="month", y="engagement")
-
-    best_month = trend_df.loc[
-        trend_df["engagement"].idxmax(), "month"
-    ]
-
-    st.info(f"📊 Highest average engagement observed in **Month {best_month}**")
 
 # =================================================
 # DOWNLOAD
@@ -255,7 +226,10 @@ st.download_button(
 )
 
 # =================================================
-# FOOTER
+# FOOTER (FIXED)
 # =================================================
-st.markdown("""
-<hr>
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown(
+    "<p style='text-align:center;color:gray;'>© 2025 Social Media Analytics Pro</p>",
+    unsafe_allow_html=True
+)
