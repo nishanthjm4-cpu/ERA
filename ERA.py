@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os
 
 # =================================================
 # PAGE CONFIG
@@ -18,7 +19,6 @@ st.markdown("""
 .main {
     background: linear-gradient(to right, #141E30, #243B55);
 }
-
 .gradient-text {
     background: linear-gradient(90deg,#00c6ff,#0072ff,#7f00ff,#e100ff);
     background-size: 300%;
@@ -26,12 +26,10 @@ st.markdown("""
     -webkit-text-fill-color: transparent;
     animation: gradientMove 6s infinite linear;
 }
-
 @keyframes gradientMove {
     0% { background-position: 0%; }
     100% { background-position: 300%; }
 }
-
 .metric-card {
     padding: 20px;
     border-radius: 18px;
@@ -40,17 +38,14 @@ st.markdown("""
     box-shadow: 0px 6px 25px rgba(0,0,0,0.4);
     transition: all 0.3s ease;
 }
-
 .metric-card:hover {
     transform: translateY(-8px) scale(1.03);
 }
-
 .blue { background: linear-gradient(135deg,#396afc,#2948ff); }
 .green { background: linear-gradient(135deg,#11998e,#38ef7d); }
 .orange { background: linear-gradient(135deg,#f7971e,#ffd200); }
 .red { background: linear-gradient(135deg,#ff416c,#ff4b2b); }
 .purple { background: linear-gradient(135deg,#667eea,#764ba2); }
-
 .progress-bar {
     height: 12px;
     width: 100%;
@@ -61,15 +56,34 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =================================================
-# LOAD DATA
+# LOAD DATA (SAFE)
 # =================================================
 @st.cache_data
-def load_data():
-    df = pd.read_csv("social_media_engagement_enhanced.csv")
+def load_data(uploaded_file=None):
+    if uploaded_file is not None:
+        df = pd.read_csv(uploaded_file)
+    elif os.path.exists("social_media_engagement.csv"):
+        df = pd.read_csv("social_media_engagement.csv")
+    else:
+        return None
+
     df["date"] = pd.to_datetime(df["date"])
     return df
 
-df = load_data()
+# =================================================
+# FILE UPLOADER
+# =================================================
+st.sidebar.markdown("## 📁 Upload Data")
+uploaded_file = st.sidebar.file_uploader(
+    "Upload Social Media CSV",
+    type=["csv"]
+)
+
+df = load_data(uploaded_file)
+
+if df is None:
+    st.warning("⚠️ Please upload the CSV file to continue.")
+    st.stop()
 
 # =================================================
 # DERIVED METRICS
@@ -107,21 +121,9 @@ st.markdown("""
 🚀 Social Media Analytics Pro Dashboard
 </h1>
 <p style="text-align:center;color:#dcdcdc;font-size:18px;">
-Engagement • Content • Campaign ROI • Revenue • Best Posting Time
+Engagement • Content • ROI • Revenue • Best Posting Time
 </p>
 """, unsafe_allow_html=True)
-
-# =================================================
-# FILTER SUMMARY
-# =================================================
-st.info(
-    f"""
-    🔎 **Current Selection**
-    • Platform: {', '.join(platform_filter)}
-    • Content Type: {', '.join(content_filter)}
-    • Year: {', '.join(map(str, year_filter))}
-    """
-)
 
 # =================================================
 # KPI CARDS
@@ -151,7 +153,7 @@ c3.markdown(f"""
 
 c4.markdown(f"""
 <div class="metric-card red">
-<h3>Revenue Generated</h3>
+<h3>Revenue</h3>
 <h2>₹ {int(filtered_df["revenue_generated"].sum())}</h2>
 </div>
 """, unsafe_allow_html=True)
@@ -166,54 +168,31 @@ c5.markdown(f"""
 st.markdown('<div class="progress-bar"></div>', unsafe_allow_html=True)
 
 # =================================================
-# TOP CONTENT INSIGHT
-# =================================================
-top_content = (
-    filtered_df.groupby("content_type")["engagement_rate"]
-    .mean()
-    .idxmax()
-)
-
-st.success(f"🔥 Best Performing Content Type: **{top_content}**")
-
-# =================================================
 # TABS
 # =================================================
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["📱 Engagement", "🖼️ Content", "💰 Campaign ROI", "⏰ Best Time", "📈 Trends"]
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["📱 Engagement", "🖼️ Content", "💰 ROI", "⏰ Best Time"]
 )
 
-# ---------------- TAB 1 ----------------
 with tab1:
-    platform_eng = filtered_df.groupby("platform")["engagement_rate"].mean().reset_index()
-    st.bar_chart(platform_eng, x="platform", y="engagement_rate")
-
-# ---------------- TAB 2 ----------------
-with tab2:
-    content_perf = filtered_df.groupby("content_type")[["likes","comments","shares","engagement"]].mean().reset_index()
-    st.dataframe(content_perf)
-    st.bar_chart(content_perf, x="content_type", y="engagement")
-
-# ---------------- TAB 3 ----------------
-with tab3:
-    campaign_df = filtered_df[filtered_df["campaign_name"].notna()]
-    campaign_summary = campaign_df.groupby("campaign_name")[["ad_spend","revenue_generated","roi"]].mean().reset_index()
-    st.dataframe(campaign_summary)
-
-# ---------------- TAB 4 ----------------
-with tab4:
-    hourly = filtered_df.groupby("post_hour")["engagement"].mean().reset_index()
-    st.line_chart(hourly, x="post_hour", y="engagement")
-
-# ---------------- TAB 5 ----------------
-with tab5:
-    trend_df = (
-        filtered_df.groupby(["year", "month"])["engagement"]
-        .mean()
-        .reset_index()
-        .sort_values(["year", "month"])
+    st.bar_chart(
+        filtered_df.groupby("platform")["engagement_rate"].mean()
     )
-    st.line_chart(trend_df, x="month", y="engagement")
+
+with tab2:
+    st.bar_chart(
+        filtered_df.groupby("content_type")["engagement"].mean()
+    )
+
+with tab3:
+    st.bar_chart(
+        filtered_df.groupby("campaign_name")["roi"].mean()
+    )
+
+with tab4:
+    st.line_chart(
+        filtered_df.groupby("post_hour")["engagement"].mean()
+    )
 
 # =================================================
 # DOWNLOAD
@@ -226,7 +205,7 @@ st.download_button(
 )
 
 # =================================================
-# FOOTER (FIXED)
+# FOOTER
 # =================================================
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown(
